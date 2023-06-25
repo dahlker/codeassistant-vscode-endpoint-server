@@ -3,8 +3,8 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request
 
-from api_models import CodingApiResponse, CodingRequestPayload, ChatCompletionApiResponse, ChatCompletionRequestPayload
-from ..dependencies import RequestHandlerProvider
+from app.model.api_models import CodingApiResponse, CodingRequestPayload, ChatCompletionApiResponse, ChatCompletionRequestPayload
+from app.request_handler import RequestHandlerProvider
 
 _RESPONSE_TYPE = {
     "chat": ChatCompletionApiResponse,
@@ -32,3 +32,4 @@ def get_completion_router(prefix: str, request_handler_provider: RequestHandlerP
         asyncio.create_task(request_handler_provider.get_handler().process_request_queue())
 
     return router
+

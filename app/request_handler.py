@@ -6,8 +6,8 @@ from collections import deque
 from fastapi import Request
 from pydantic import BaseModel
 
-from api_models import GeneratorBase, GeneratorException
-from util import logger
+from app.model.api_models import GeneratorBase, GeneratorException
+from app.util import logger
 
 
 class ClientRequest:
@@ -19,7 +19,7 @@ class ClientRequest:
         self.request_payload: BaseModel = request_payload
         self.api_response: BaseModel | None = None
         self.event: asyncio.Event = asyncio.Event()
-        
+
     def get_client_id(self, request):
         if 'authorization' in request._headers:
             auth_header = request._headers['authorization']
@@ -28,13 +28,14 @@ class ClientRequest:
                 return auth_header[7:] + request.client.host
         return ""
 
+
 class ClientRequestQueue:
     def __init__(self):
         self._queue: deque = deque()
         self._client_items: dict = dict()
         self._lock: threading.Lock = threading.Lock()
         self._cache: dict = dict()
-    
+
     async def put_or_exchange(self, item: ClientRequest) -> ClientRequest:
         client_id: str = item.id
         exchanged_item: ClientRequest = None
@@ -55,6 +56,7 @@ class ClientRequestQueue:
                     return item
             await asyncio.sleep(.01)
 
+
 class ResponseCache:
     def __init__(self):
         self._cache: dict = dict()
@@ -70,7 +72,8 @@ class ResponseCache:
                 api_response: BaseModel = self._cache[request_payload.key()]
                 return api_response
         return None
-    
+
+
 class RequestHandler:
     def __init__(self, generator: GeneratorBase, auth_prefix: str):
         self.generator: GeneratorBase = generator
@@ -100,7 +103,7 @@ class RequestHandler:
             logger.debug(f"done processing request {client_request.cnt} from queue {request.client.port}")
             client_request.api_response = api_response
             client_request.event.set()
-    
+
     async def handle_request(self, request: Request, request_payload: BaseModel) -> BaseModel:
         self.cnt += 1
         local_cnt = self.cnt
@@ -115,7 +118,8 @@ class RequestHandler:
         cached_response = await self.response_cache.retrieve(request_payload)
         if cached_response is not None:
             logger.debug(f"cache hit for request {local_cnt}")
-            logger.info(f" returning request {local_cnt} from port {request.client.port}: time {time.time() - client_request.creation_time:.5f}")
+            logger.info(
+                f" returning request {local_cnt} from port {request.client.port}: time {time.time() - client_request.creation_time:.5f}")
             return cached_response
 
         exchanged_client_request = await self.queue.put_or_exchange(client_request)
@@ -123,9 +127,18 @@ class RequestHandler:
             logger.info(f" expired request {exchanged_client_request.cnt}")
             exchanged_client_request.api_response = self.generator.generate_default_api_response("", 429)
             exchanged_client_request.event.set()
-    
+
         logger.debug(f"waiting for request {local_cnt}")
         await client_request.event.wait()
 
-        logger.info(f" returning request {local_cnt} from port {request.client.port}: time {time.time() - client_request.creation_time:.5f}")
+        logger.info(
+            f" returning request {local_cnt} from port {request.client.port}: time {time.time() - client_request.creation_time:.5f}")
         return client_request.api_response
+
+
+class RequestHandlerProvider:
+    def __init__(self, request_handler: RequestHandler):
+        self.request_handler = request_handler
+
+    def get_handler(self) -> RequestHandler:
+        return self.request_handler

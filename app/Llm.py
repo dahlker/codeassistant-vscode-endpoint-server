@@ -5,7 +5,7 @@ import torch
 from transformers import AutoModelForCausalLM, LlamaForCausalLM, AutoTokenizer, LlamaTokenizer
 from transformers import StoppingCriteria, StoppingCriteriaList
 
-from util import logger
+from app.util import logger
 
 
 class KeywordsStoppingCriteria(StoppingCriteria):

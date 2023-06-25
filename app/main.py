@@ -1,15 +1,14 @@
-import asyncio
 from pathlib import Path
 
 import uvicorn
 from fastapi import FastAPI, APIRouter
 
-from Llm import Llm
-from app.dependencies import RequestHandlerProvider
+from app.Llm import Llm
+from app.request_handler import RequestHandlerProvider
 from app.routers.completion import get_completion_router
-from generators import CodeGenerator, ChatGenerator
-from request_handler import RequestHandler
-from util import get_parser, logger
+from app.generators import CodeGenerator, ChatGenerator
+from app.request_handler import RequestHandler
+from app.util import get_parser, logger
 
 
 def read_version():
@@ -38,10 +37,6 @@ def build_app(api_type: str, request_handler) -> FastAPI:
     )
     router.include_router(get_completion_router(api_type, RequestHandlerProvider(request_handler)))
     app.include_router(router)
-
-    @app.on_event("startup")
-    async def on_startup():
-        asyncio.create_task(request_handler.process_request_queue())
 
     return app
 
