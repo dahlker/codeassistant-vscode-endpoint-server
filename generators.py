@@ -10,7 +10,7 @@ from util import logger
 
 
 class ChatGenerator(GeneratorBase):
-    def __init__(self, llm: Llm):
+    def __init__(self, llm: Llm = None):
         self.llm = llm
         self.message_prefix = '### '
         self.llm.add_stopwords([self.message_prefix.strip()])

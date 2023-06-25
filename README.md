@@ -12,7 +12,7 @@ Currently, we are not using batches for inference
 
 ```shell
 pip install -r requirements.txt
-python main.py
+python -m app.main
 ```
 
 Use `http://localhost:8000/api/generate/` as `Hugging Face Code > Model ID or Endpoint` in VSCode.
