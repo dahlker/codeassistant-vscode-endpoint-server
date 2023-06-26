@@ -8,6 +8,7 @@ from app.generators import CodeGenerator, ChatGenerator
 from app.request_handler import RequestHandler
 from app.request_handler import RequestHandlerProvider
 from app.routers.completion import get_completion_router
+from app.routers.feedback import get_feedback_router
 from app.util import logger, get_config_from_arguments, ApiConfig, ModelConfig
 
 
@@ -25,6 +26,7 @@ def build_app(api_config: ApiConfig, model_config: ModelConfig) -> FastAPI:
         prefix="/api/v1"
     )
     add_completion_endpoint(api_config, model_config, router)
+    add_feedback_endpoint(router)
     app.include_router(router)
 
     return app
@@ -46,6 +48,10 @@ def create_request_handler(api_config: ApiConfig, model_config: ModelConfig) -> 
         exit()
 
     return RequestHandler(generator=generator, auth_prefix=api_config.auth_prefix)
+
+
+def add_feedback_endpoint(router):
+    router.include_router(get_feedback_router())
 
 
 def main():
