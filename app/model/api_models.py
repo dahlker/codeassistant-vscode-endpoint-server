@@ -1,6 +1,12 @@
+from enum import Enum
 from typing import Optional, List
 
 from pydantic import BaseModel
+
+
+class CompletionType(str, Enum):
+    CHAT = "chat"
+    CODE = "code"
 
 
 class GeneratorException(Exception):

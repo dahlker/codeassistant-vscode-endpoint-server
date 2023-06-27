@@ -5,11 +5,11 @@ import torch
 from transformers import AutoModelForCausalLM, LlamaForCausalLM, AutoTokenizer, LlamaTokenizer
 from transformers import StoppingCriteria, StoppingCriteriaList
 
-from app.util import logger
+from app.util import logger, ModelConfig
 
 
 class KeywordsStoppingCriteria(StoppingCriteria):
-    def __init__(self, keywords_ids:list):
+    def __init__(self, keywords_ids: list):
         self.keywords_ids = keywords_ids
 
     def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor, **kwargs) -> bool:
@@ -17,44 +17,46 @@ class KeywordsStoppingCriteria(StoppingCriteria):
             return True
         return False
 
+
 class Llm:
-    models = {'llama-small': {'model': 'decapoda-research/llama-7b-hf'},
-            'llama-medium': {'model': 'decapoda-research/llama-13b-hf'},
-            'llama-large': {'model': 'decapoda-research/llama-65b-hf'},
-            'stable-vicuna': {'model': 'Llama-delta/stable-vicuna-13b'},
-            'wizard-vicuna': {'model': 'TheBloke/Wizard-Vicuna-13B-Uncensored-HF'},
-            'guanaco': {'model': 'JosephusCheung/Guanaco'},
-            'guanaco-large': {'model': 'timdettmers/guanaco-65b'},
-            'falcon-instruct-small': {'model': 'tiiuae/falcon-7b-instruct', 'trust_remote_code': True},
-            'falcon-instruct-large': {'model': 'tiiuae/falcon-40b-instruct', 'trust_remote_code': True},
-            'falcon-large': {'model': 'tiiuae/falcon-40b', 'trust_remote_code': True},
-            'mpnet-v2': {'model': 'sentence-transformers/all-mpnet-base-v2'},
+    models = {
+        'llama-small': {'model': 'decapoda-research/llama-7b-hf'},
+        'llama-medium': {'model': 'decapoda-research/llama-13b-hf'},
+        'llama-large': {'model': 'decapoda-research/llama-65b-hf'},
+        'stable-vicuna': {'model': 'Llama-delta/stable-vicuna-13b'},
+        'wizard-vicuna': {'model': 'TheBloke/Wizard-Vicuna-13B-Uncensored-HF'},
+        'guanaco': {'model': 'JosephusCheung/Guanaco'},
+        'guanaco-large': {'model': 'timdettmers/guanaco-65b'},
+        'falcon-instruct-small': {'model': 'tiiuae/falcon-7b-instruct', 'trust_remote_code': True},
+        'falcon-instruct-large': {'model': 'tiiuae/falcon-40b-instruct', 'trust_remote_code': True},
+        'falcon-large': {'model': 'tiiuae/falcon-40b', 'trust_remote_code': True},
+        'mpnet-v2': {'model': 'sentence-transformers/all-mpnet-base-v2'},
             'starcoder': {'model': 'bigcode/starcoder'},
-            'testing': {'model': 'gpt2'},
-            }
+        'testing': {'model': 'gpt2'},
+    }
 
     generation_config_overrides = {'falcon': {'ignore': ['stop']}}
 
     bitsize_map = {8: {'load_in_8bit': True, 'torch_dtype': torch.float16},
-                16: {'torch_dtype': torch.bfloat16},
-                32: {'torch_dtype': torch.float}}
+                   16: {'torch_dtype': torch.bfloat16},
+                   32: {'torch_dtype': torch.float}}
 
-    def __init__(self, model_name, bitsize=16, device=None, do_not_load_llm=False):
+    def __init__(self, config: ModelConfig):
         self.prev_time = timer()
         self.delta_t = 0
         self.timeit()
-        self.device = "cuda" if device is None else device
-        assert model_name in Llm.models, f"model {model_name} not found.\nchose one of: {[key for key in Llm.models.keys()]}"
-        self.model_name = model_name
-        self.model_config = self.get_model_config(model_name, bitsize)
+        self.device = "cuda" if config.device is None else config.device
+        assert config.model_name in Llm.models, f"model {config.model_name} not found.\nchose one of: {[key for key in Llm.models.keys()]}"
+        self.model_name = config.model_name
+        self.model_config = self.get_model_config(config.model_name, config.bitsize)
         self.stopping_criteria_config = {}
         self.stop_ids = []
         self.load_tokenizer()
         # load model should be the last action, so that get_timing returns the load time if called after Llm()
-        if do_not_load_llm:
+        if config.do_not_load_llm:
             self.model = None
             return
-        self.load_model(bitsize)
+        self.load_model(config.bitsize)
 
     def get_model_config(self, model_id: str, bitsize: int):
         config = Llm.models[model_id].copy()
@@ -83,11 +85,11 @@ class Llm:
         self.timeit()
         self.model = model_loader(model_id, **params)
         self.timeit("load model")
- 
+
         self.max_position_embeddings = None
-        if hasattr(self.model.config,'max_position_embeddings'):
+        if hasattr(self.model.config, 'max_position_embeddings'):
             self.max_position_embeddings = self.model.config.max_position_embeddings
-            
+
         logger.debug(self.model.hf_device_map)
         self.print_model_layer_information()
 
@@ -97,7 +99,7 @@ class Llm:
         self.timeit()
         self.tokenizer = tokenizer_loader(model_id)
         self.timeit("load tokenizer")
-        
+
     def tokenize(self, text):
         return self.tokenizer(text, return_tensors="pt", return_token_type_ids=False).to(self.device)
 
@@ -122,12 +124,14 @@ class Llm:
             size_dict[layer_name] += param.numel()
             device_dict[layer_name].add(param.device)
         for layer_name in layer_names:
-            logger.debug(f"Layer: {layer_name}: {size_dict[layer_name]/1024**2:.3f} MB on device {device_dict[layer_name]}")
+            logger.debug(
+                f"Layer: {layer_name}: {size_dict[layer_name] / 1024 ** 2:.3f} MB on device {device_dict[layer_name]}")
         devices = {device for device_set in device_dict.values() for device in device_set}
         for device in devices:
-            logger.debug(f"Used GPU mem: {sum([param.numel() for _, param in self.model.named_parameters() if device == param.device])/1024**3:.3f} GB on {device}")
+            logger.debug(
+                f"Used GPU mem: {sum([param.numel() for _, param in self.model.named_parameters() if device == param.device]) / 1024 ** 3:.3f} GB on {device}")
         if len(devices) > 1:
-            logger.debug(f"Used GPU mem: {sum(size_dict[l] for l in size_dict.keys())/1024**3:.3f} GB in total")
+            logger.debug(f"Used GPU mem: {sum(size_dict[l] for l in size_dict.keys()) / 1024 ** 3:.3f} GB in total")
 
     def strip_inputs_and_stopwords(self, outputs, input_ids):
         # remove the last token, if it was a stopping token
@@ -138,8 +142,9 @@ class Llm:
         end_idx = end_idx + 1 if end_idx < -1 else len(outputs[0])
         logger.debug(f"Stopping at {end_idx} token from the end")
         # remove input_ids from the outputs
-        if outputs[0,0] != input_ids[0,0]:
-            logger.warning(f"outputs do not start with input tokens, skipping stripping {outputs[0,0]} {input_ids[0,0]}")
+        if outputs[0, 0] != input_ids[0, 0]:
+            logger.warning(
+                f"outputs do not start with input tokens, skipping stripping {outputs[0, 0]} {input_ids[0, 0]}")
             outputs = outputs[:, :end_idx]
         else:
             logger.debug(f"Stripping {len(input_ids[0])} tokens from the start")
@@ -151,17 +156,20 @@ class Llm:
         for model_prefix, overrides in Llm.generation_config_overrides.items():
             if self.model_name.startswith(model_prefix):
                 ignore_list += overrides['ignore']
-        return {k: v for k,v in generation_config.items() if k not in ignore_list}
+        return {k: v for k, v in generation_config.items() if k not in ignore_list}
 
-    def generate_from_ids(self, inputs, generation_config: dict, stopping_criteria_list: StoppingCriteriaList=None, remove_prompt_from_reply: bool=True) -> tuple:
+    def generate_from_ids(self, inputs, generation_config: dict, stopping_criteria_list: StoppingCriteriaList = None,
+                          remove_prompt_from_reply: bool = True) -> tuple:
         input_ids = inputs['input_ids']
         prompt_tokens = len(input_ids[0])
         generation_config = self.update_generation_config(generation_config)
         self.timeit()
         if self.model is not None:
             if self.max_position_embeddings is not None and prompt_tokens > self.max_position_embeddings:
-                logger.debug(f"ignoring request: input sequence too long {prompt_tokens} > {self.max_position_embeddings}")
-                return self.tokenize(f"input sequence too long {prompt_tokens} > {self.max_position_embeddings}")['input_ids'], prompt_tokens, 0
+                logger.debug(
+                    f"ignoring request: input sequence too long {prompt_tokens} > {self.max_position_embeddings}")
+                return self.tokenize(f"input sequence too long {prompt_tokens} > {self.max_position_embeddings}")[
+                    'input_ids'], prompt_tokens, 0
             if stopping_criteria_list is not None:
                 stopping_criteria_config = {'stopping_criteria': stopping_criteria_list}
             elif self.stopping_criteria_config is not None:
@@ -170,7 +178,8 @@ class Llm:
                 stopping_criteria_config = {}
             #if self.stopping_criteria_config is not None:
             #    stopping_criteria_config = self.stopping_criteria_config
-            outputs = self.model.generate(**inputs, **generation_config, **stopping_criteria_config, pad_token_id=self.tokenizer.eos_token_id)
+            outputs = self.model.generate(**inputs, **generation_config, **stopping_criteria_config,
+                                          pad_token_id=self.tokenizer.eos_token_id)
         else:
             outputs = input_ids
         self.timeit(f"inference {prompt_tokens}/{len(outputs[0]) - prompt_tokens}")
@@ -179,12 +188,15 @@ class Llm:
         completion_tokens = len(outputs[0])
         return outputs, prompt_tokens, completion_tokens
 
-    def generate(self, prompt: str, generation_config: dict, stopping_criteria_list: StoppingCriteriaList=None, remove_prompt_from_reply: bool=True) -> tuple:
+    def generate(self, prompt: str, generation_config: dict, stopping_criteria_list: StoppingCriteriaList = None,
+                 remove_prompt_from_reply: bool = True) -> tuple:
         if self.model is None:
             return "Testing without LLM", 0, 0
 
         inputs = self.tokenize(prompt)
-        outputs, prompt_tokens, completion_tokens = self.generate_from_ids(inputs, generation_config, stopping_criteria_list, remove_prompt_from_reply=True)
+        outputs, prompt_tokens, completion_tokens = self.generate_from_ids(inputs, generation_config,
+                                                                           stopping_criteria_list,
+                                                                           remove_prompt_from_reply=True)
         answer = self.tokenizer.batch_decode(outputs)
         if not remove_prompt_from_reply:
             answer[0] = prompt + answer[0]
@@ -198,9 +210,8 @@ class Llm:
         self.prev_time = cur_time
 
     def get_timing(self):
-        return self.delta_t        
+        return self.delta_t
 
     def get_device_map(self):
         device_map = "auto"
         return device_map
-    

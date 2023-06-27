@@ -3,21 +3,22 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request
 
-from app.model.api_models import CodingApiResponse, CodingRequestPayload, ChatCompletionApiResponse, ChatCompletionRequestPayload
+from app.model.api_models import CodingApiResponse, CodingRequestPayload, ChatCompletionApiResponse, \
+    ChatCompletionRequestPayload, CompletionType
 from app.request_handler import RequestHandlerProvider
 
 _RESPONSE_TYPE = {
-    "chat": ChatCompletionApiResponse,
-    "code": CodingApiResponse
+    CompletionType.CHAT: ChatCompletionApiResponse,
+    CompletionType.CODE: CodingApiResponse
 }
 
 _REQUEST_PAYLOAD = {
-    "chat": ChatCompletionRequestPayload,
-    "code": CodingRequestPayload
+    CompletionType.CHAT: ChatCompletionRequestPayload,
+    CompletionType.CODE: CodingRequestPayload
 }
 
 
-def get_completion_router(prefix: str, request_handler_provider: RequestHandlerProvider) -> APIRouter:
+def get_completion_router(prefix: CompletionType, request_handler_provider: RequestHandlerProvider) -> APIRouter:
     router = APIRouter(
         prefix=f"/{prefix}", tags=[prefix]
     )
@@ -32,4 +33,3 @@ def get_completion_router(prefix: str, request_handler_provider: RequestHandlerP
         asyncio.create_task(request_handler_provider.get_handler().process_request_queue())
 
     return router
-
