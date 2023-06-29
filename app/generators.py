@@ -1,6 +1,7 @@
 import time
 import traceback
 from typing import List
+from uuid import uuid4
 
 from app.Llm import Llm
 from app.model.api_models import ChatCompletionRequestPayload, ChatCompletionApiResponse, ChatCompletionApiChoice, ChatMessage, ApiUsage
@@ -14,16 +15,14 @@ class ChatGenerator(GeneratorBase):
         self.llm = llm
         self.message_prefix = '### '
         self.llm.add_stopwords([self.message_prefix.strip()])
-        self.idx = 0
 
     @classmethod
-    def generate_default_api_response(self, message: str, status: int) -> ChatCompletionApiResponse:
-        response = ChatCompletionApiResponse(id=status, created=int(time.time()), model=message, choices=[],
-                                             usage=self.generate_api_usage(0, 0))
+    def generate_default_api_response(cls, message: str, status: int) -> ChatCompletionApiResponse:
+        response = ChatCompletionApiResponse(id=status, created=int(time.time()), model=message, choices=[], usage=cls.generate_api_usage(0, 0))
         return response
 
-    @classmethod
-    def generate_api_usage(self, prompt_tokens: int, completion_tokens: int) -> ApiUsage:
+    @staticmethod
+    def generate_api_usage(prompt_tokens: int, completion_tokens: int) -> ApiUsage:
         return ApiUsage(prompt_tokens=prompt_tokens, completion_tokens=completion_tokens, total_tokens=prompt_tokens + completion_tokens)
 
     def chat_messages_to_prompt(self, chat_messages: List[ChatMessage]) -> str:
@@ -32,8 +31,7 @@ class ChatGenerator(GeneratorBase):
         return "\n".join(chat_message_strings)
 
     def generate_api_response(self, answer: str, api_usage: ApiUsage) -> ChatCompletionApiResponse:
-        self.idx += 1
-        idx = f"chatcmpl-{self.idx}"
+        idx = f"chatcmpl-{uuid4()}"
         created = int(time.time())
         model = self.llm.model_name
         chat_message = ChatMessage(role="assistant", content=answer)
@@ -63,11 +61,10 @@ class ChatGenerator(GeneratorBase):
 class CodeGenerator(GeneratorBase):
     def __init__(self, llm: Llm = None):
         self.llm = llm
-        self.idx = 0
 
     @classmethod
-    def generate_default_api_response(self, message: str, status: int) -> CodingApiResponse:
-        response = CodingApiResponse(status=status, generated_text=message)
+    def generate_default_api_response(cls, message: str, status: int) -> CodingApiResponse:
+        response = CodingApiResponse(id=f"codecmpl-{uuid4()}", status=status, generated_text=message)
         return response
 
     def get_generation_config(self, request_payload: CodingRequestPayload) -> tuple:
