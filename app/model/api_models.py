@@ -89,7 +89,7 @@ class ChatCompletionRequestPayload(BaseModel):
     user: Optional[str] = "anonymous"
 
     def key(self):
-        return hash((self.model, "\n".join([f"{role}{name}: {content}" for role, content, name in self.messages]), self.max_tokens, self.user))
+        return hash((self.model, self.max_tokens, "\n".join([f"{role}{name}: {content}" for role, content, name in self.messages]), self.max_tokens, self.user))
 
 
 class CompletionApiChoice(BaseModel):
