@@ -1,7 +1,8 @@
 from pathlib import Path
 
 import uvicorn
-from fastapi import FastAPI, APIRouter
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, Security
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.Llm import Llm
 from app.generators import CodeGenerator, ChatGenerator
@@ -17,9 +18,14 @@ def read_version():
 
 
 def build_app(api_config: ApiConfig, model_config: ModelConfig) -> FastAPI:
+    async def verify_token(credentials: HTTPAuthorizationCredentials = Security(HTTPBearer())):
+        if credentials.scheme != "Bearer" or not credentials.credentials.startswith(api_config.auth_prefix):
+            raise HTTPException(status_code=401, detail="Invalid bearer token")
+
     app: FastAPI = FastAPI(
         title="TNG Internal Starcoder",
-        version=read_version()
+        version=read_version(),
+        dependencies=[Depends(verify_token)]
     )
 
     router = APIRouter(

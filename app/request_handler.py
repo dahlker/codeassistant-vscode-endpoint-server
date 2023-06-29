@@ -20,7 +20,8 @@ class ClientRequest:
         self.api_response: BaseModel | None = None
         self.event: asyncio.Event = asyncio.Event()
 
-    def get_client_id(self, request):
+    @staticmethod
+    def get_client_id(request):
         if 'authorization' in request._headers:
             auth_header = request._headers['authorization']
             logger.debug(f"auth_header {auth_header}")
@@ -109,11 +110,6 @@ class RequestHandler:
         local_cnt = self.cnt
         logger.info(f" received request {local_cnt} from {request.client.host}:{request.client.port}")
         client_request: ClientRequest = ClientRequest(request, request_payload, local_cnt)
-
-        if not client_request.id.startswith(self.auth_prefix):
-            logger.debug(f"request {local_cnt} with invalid bearer token: '{client_request.id}'")
-            # we don't throw an exception here, so that the user will see the error message within the IDE
-            return self.generator.generate_default_api_response("invalid bearer token", 401)
 
         cached_response = await self.response_cache.retrieve(request_payload)
         if cached_response is not None:
