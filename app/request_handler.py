@@ -6,18 +6,18 @@ from collections import deque
 from fastapi import Request
 from pydantic import BaseModel
 
-from app.model.api_models import GeneratorBase, GeneratorException
+from app.model.api_models import GeneratorBase, GeneratorException, ApiResponse, RequestPayload
 from app.util import logger
 
 
 class ClientRequest:
-    def __init__(self, request: Request, request_payload: BaseModel, cnt: int):
+    def __init__(self, request: Request, request_payload: RequestPayload, cnt: int):
         self.creation_time = time.time()
         self.id: str = self.get_client_id(request)
         self.cnt: int = cnt
         self.request: Request = request
-        self.request_payload: BaseModel = request_payload
-        self.api_response: BaseModel | None = None
+        self.request_payload = request_payload
+        self.api_response: ApiResponse | None = None
         self.event: asyncio.Event = asyncio.Event()
 
     @staticmethod
@@ -37,9 +37,9 @@ class ClientRequestQueue:
         self._lock: threading.Lock = threading.Lock()
         self._cache: dict = dict()
 
-    async def put_or_exchange(self, item: ClientRequest) -> ClientRequest:
+    async def put_or_exchange(self, item: ClientRequest) -> ClientRequest | None:
         client_id: str = item.id
-        exchanged_item: ClientRequest = None
+        exchanged_item: ClientRequest | None = None
         with self._lock:
             if client_id in self._client_items:
                 exchanged_item = self._client_items[client_id]
@@ -60,17 +60,18 @@ class ClientRequestQueue:
 
 class ResponseCache:
     def __init__(self):
-        self._cache: dict = dict()
+        self._cache: dict[tuple, ApiResponse] = dict()
         self._lock: threading.Lock = threading.Lock()
 
-    async def update(self, request_payload: BaseModel, api_response: BaseModel):
+    async def update(self, request_payload: RequestPayload, api_response: ApiResponse):
         with self._lock:
             self._cache[request_payload.key()] = api_response
 
-    async def retrieve(self, request_payload: BaseModel) -> BaseModel:
+    async def retrieve(self, request_payload: RequestPayload) -> ApiResponse | None:
         with self._lock:
             if request_payload.key() in self._cache:
-                api_response: BaseModel = self._cache[request_payload.key()]
+                api_response = self._cache[request_payload.key()]
+                api_response.set_is_cached_response()
                 return api_response
         return None
 
@@ -88,9 +89,9 @@ class RequestHandler:
             logger.debug("awaiting next request")
             client_request: ClientRequest = await self.queue.get()
             request: Request = client_request.request
-            request_payload: BaseModel = client_request.request_payload
+            request_payload = client_request.request_payload
             logger.debug(f"got request {client_request.cnt} from queue {request.client.port}")
-            api_response: BaseModel = await self.response_cache.retrieve(request_payload)
+            api_response: ApiResponse = await self.response_cache.retrieve(request_payload)
             try:
                 if api_response is None:
                     await asyncio.sleep(0.005)
@@ -105,7 +106,7 @@ class RequestHandler:
             client_request.api_response = api_response
             client_request.event.set()
 
-    async def handle_request(self, request: Request, request_payload: BaseModel) -> BaseModel:
+    async def handle_request(self, request: Request, request_payload: RequestPayload) -> BaseModel:
         self.cnt += 1
         local_cnt = self.cnt
         logger.info(f" received request {local_cnt} from {request.client.host}:{request.client.port}")
