@@ -1,6 +1,6 @@
 # Hugging Face VSCode Endpoint Server
 
-A server for [huggingface-vscdoe](https://github.com/huggingface/huggingface-vscode) custom endpoints using LLMs.
+A server for [huggingface-vscode](https://github.com/huggingface/huggingface-vscode) custom endpoints using LLMs.
 
 This fork properly handles multiple client requests, adds Bearer-token authentication and supports https.
 
