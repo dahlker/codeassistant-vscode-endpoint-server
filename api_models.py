@@ -59,7 +59,7 @@ class CompletionRequestPayload(BaseModel):
     user: Optional[str] = None
 
     def key(self):
-        return (self.model, self.prompt, self.max_tokens, self.temperature, self.user)
+        return hash((self.model, self.prompt, self.max_tokens, self.temperature, self.user))
 
 
 class ChatMessage(BaseModel):
@@ -83,7 +83,7 @@ class ChatCompletionRequestPayload(BaseModel):
     user: Optional[str] = "anonymous"
 
     def key(self):
-        return (self.model, "\n".join([f"{role}{name}: {content}" for role, content, name in self.messages]), self.user)
+        return hash((self.model, "\n".join([f"{role}{name}: {content}" for role, content, name in self.messages]), self.max_tokens, self.user))
 
 
 class CompletionApiChoice(BaseModel):

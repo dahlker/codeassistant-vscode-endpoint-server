@@ -28,6 +28,7 @@ class Llm:
             'falcon-instruct-small': {'model': 'tiiuae/falcon-7b-instruct', 'trust_remote_code': True},
             'falcon-instruct-large': {'model': 'tiiuae/falcon-40b-instruct', 'trust_remote_code': True},
             'falcon-large': {'model': 'tiiuae/falcon-40b', 'trust_remote_code': True},
+            'mpnet-v2': {'model': 'sentence-transformers/all-mpnet-base-v2'},
             'starcoder': {'model': 'bigcode/starcoder'},
             'testing': {'model': 'gpt2'},
             }

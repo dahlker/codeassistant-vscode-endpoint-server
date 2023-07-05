@@ -70,8 +70,19 @@ class CodeGenerator(GeneratorBase):
         response = CodingApiResponse(status=status, generated_text=message)
         return response
 
+    def get_generation_config(self, request_payload: CodingRequestPayload) -> dict:
+        coding_parameters = CodingParameters() if request_payload.parameters is None else request_payload.parameters
+        parameters = {}
+        stopping_criteria_list = None
+        for param, value in coding_parameters.dict().items():
+            if param == 'stop':
+                stopping_criteria_list = self.llm.get_stopping_criteria_list(value)
+            else:
+                parameters[param] = value
+        return parameters, stopping_criteria_list
+
     async def generate(self, request_payload: CodingRequestPayload) -> CodingApiResponse:
-        generation_config_dict = request_payload.parameters.dict() if request_payload.parameters is not None else CodingParameters().dict()
+        generation_config_dict, stopping_criteria_list = self.get_generation_config()
         try:
             answer, prompt_tokens, completion_tokens = self.llm.generate(request_payload.inputs, generation_config_dict,
                                                                          remove_prompt_from_reply=False)
