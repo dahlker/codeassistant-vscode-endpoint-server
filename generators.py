@@ -51,12 +51,12 @@ class ChatGenerator(GeneratorBase):
             prompt = self.chat_messages_to_prompt(request_payload.messages)
             answer, prompt_tokens, completion_tokens = self.llm.generate(prompt, self.get_generation_config(request_payload),
                                                                          remove_prompt_from_reply=True)
+            answer = answer.lstrip()
             api_usage: ApiUsage = self.generate_api_usage(prompt_tokens, completion_tokens)
         except (RuntimeError, AttributeError) as e:
             logger.error(f"Llm chat inference error: {str(e)}")
             logger.debug(f"Full stacktrace: \n{traceback.format_exc()}")
             raise GeneratorException("Internal error invoking the model. Please let us know that you are experiencing this error.")
-
         return self.generate_api_response(answer, api_usage)
 
 
@@ -70,24 +70,25 @@ class CodeGenerator(GeneratorBase):
         response = CodingApiResponse(status=status, generated_text=message)
         return response
 
-    def get_generation_config(self, request_payload: CodingRequestPayload) -> dict:
+    def get_generation_config(self, request_payload: CodingRequestPayload) -> tuple:
         coding_parameters = CodingParameters() if request_payload.parameters is None else request_payload.parameters
         parameters = {}
         stopping_criteria_list = None
         for param, value in coding_parameters.dict().items():
-            if param == 'stop':
+            if param == 'stop' and value is not None and len(value) > 0:
                 stopping_criteria_list = self.llm.get_stopping_criteria_list(value)
             else:
                 parameters[param] = value
         return parameters, stopping_criteria_list
 
     async def generate(self, request_payload: CodingRequestPayload) -> CodingApiResponse:
-        generation_config_dict, stopping_criteria_list = self.get_generation_config()
+        generation_config_dict, stopping_criteria_list = self.get_generation_config(request_payload=request_payload)
         try:
-            answer, prompt_tokens, completion_tokens = self.llm.generate(request_payload.inputs, generation_config_dict,
+            answer, prompt_tokens, completion_tokens = self.llm.generate(request_payload.inputs, generation_config_dict, stopping_criteria_list=stopping_criteria_list,
                                                                          remove_prompt_from_reply=False)
         except (RuntimeError, AttributeError) as e:
             logger.error(f"Llm code inference error: {str(e)}")
             logger.debug(f"Full stacktrace: \n{traceback.format_exc()}")
             raise GeneratorException("Internal error invoking the model. Please let us know that you are experiencing this error.")
         return self.generate_default_api_response(answer, 200)
+    

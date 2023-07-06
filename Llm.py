@@ -168,8 +168,8 @@ class Llm:
                 stopping_criteria_config = self.stopping_criteria_config
             else:
                 stopping_criteria_config = {}
-            if self.stopping_criteria_config is not None:
-                stopping_criteria_config = self.stopping_criteria_config
+            #if self.stopping_criteria_config is not None:
+            #    stopping_criteria_config = self.stopping_criteria_config
             outputs = self.model.generate(**inputs, **generation_config, **stopping_criteria_config, pad_token_id=self.tokenizer.eos_token_id)
         else:
             outputs = input_ids
@@ -184,9 +184,11 @@ class Llm:
             return "Testing without LLM", 0, 0
 
         inputs = self.tokenize(prompt)
-        outputs, prompt_tokens, completion_tokens = self.generate_from_ids(inputs, generation_config, stopping_criteria_list, remove_prompt_from_reply)
+        outputs, prompt_tokens, completion_tokens = self.generate_from_ids(inputs, generation_config, stopping_criteria_list, remove_prompt_from_reply=True)
         answer = self.tokenizer.batch_decode(outputs)
-        return answer[0].lstrip(), prompt_tokens, completion_tokens
+        if not remove_prompt_from_reply:
+            answer[0] = prompt + answer[0]
+        return answer[0], prompt_tokens, completion_tokens
 
     def timeit(self, label=None):
         cur_time = timer()
@@ -202,4 +204,3 @@ class Llm:
         device_map = "auto"
         return device_map
     
-
