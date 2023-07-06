@@ -24,7 +24,7 @@ class CodingParameters(BaseModel):
     stop: Optional[List[str]] = None
 
     def key(self):
-        return (self.max_new_tokens, self.temperature, self.do_sample, self.top_p, tuple(self.stop))
+        return (self.max_new_tokens, self.temperature, self.do_sample, self.top_p, tuple(self.stop) if self.stop is not None else None)
 
 
 class CodingRequestPayload(BaseModel):
@@ -32,7 +32,7 @@ class CodingRequestPayload(BaseModel):
     parameters: Optional[CodingParameters]
 
     def key(self):
-        return (self.inputs, self.parameters.key if self.parameters else "")
+        return (self.inputs, self.parameters.key() if self.parameters else "")
 
 
 class CodingApiResponse(BaseModel):
