@@ -17,13 +17,18 @@ _REQUEST_PAYLOAD = {
     CompletionType.CODE: CodingRequestPayload
 }
 
+_API_PREFIX_CONVENTION_TO_MODEL_OPENAI = {
+    CompletionType.CHAT: "/v1/chat/completions",
+    CompletionType.CODE: "/api/generate"
+}
+
 
 def get_completion_router(prefix: CompletionType, request_handler_provider: RequestHandlerProvider) -> APIRouter:
     router = APIRouter(
-        prefix=f"/{prefix}", tags=[prefix]
+        prefix=_API_PREFIX_CONVENTION_TO_MODEL_OPENAI[prefix], tags=[prefix]
     )
 
-    @router.post("/completion")
+    @router.post("/")
     async def create_completion(request: Request, request_payload: _REQUEST_PAYLOAD[prefix], request_handler: Annotated[
         request_handler_provider.get_handler, Depends()]) -> _RESPONSE_TYPE[prefix]:
         return await request_handler.handle_request(request, request_payload)

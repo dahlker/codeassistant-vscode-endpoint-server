@@ -28,9 +28,7 @@ def build_app(api_config: ApiConfig, model_config: ModelConfig) -> FastAPI:
         dependencies=[Depends(verify_token)]
     )
 
-    router = APIRouter(
-        prefix="/api/v1"
-    )
+    router = APIRouter()
     add_completion_endpoint(api_config, model_config, router)
     add_feedback_endpoint(router)
     app.include_router(router)
