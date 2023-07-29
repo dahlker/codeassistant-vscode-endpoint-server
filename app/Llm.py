@@ -25,6 +25,12 @@ class Llm:
         'llama-large': {'model': 'decapoda-research/llama-65b-hf'},
         'stable-vicuna': {'model': 'Llama-delta/stable-vicuna-13b'},
         'wizard-vicuna': {'model': 'TheBloke/Wizard-Vicuna-13B-Uncensored-HF'},
+        'wizard-vicuna-large': {'model': 'ehartford/Wizard-Vicuna-30B-Uncensored'},
+        'llama2': {'model': 'meta-llama/Llama-2-70b-hf'},
+        'llama2-chat': {'model': 'meta-llama/Llama-2-70b-chat-hf'},
+        'beluga2': {'model': 'stabilityai/StableBeluga2'},
+        'guanaco2': {'model': 'TheBloke/llama-2-70b-Guanaco-QLoRA-fp16'},
+        'airoboros': {'model': 'jondurbin/airoboros-l2-70b-gpt4-1.4.1'},
         'guanaco': {'model': 'JosephusCheung/Guanaco'},
         'guanaco-large': {'model': 'timdettmers/guanaco-65b'},
         'falcon-instruct-small': {'model': 'tiiuae/falcon-7b-instruct', 'trust_remote_code': True},
@@ -45,7 +51,7 @@ class Llm:
         self.prev_time = timer()
         self.delta_t = 0
         self.timeit()
-        self.device = "cuda" if config.device is None else config.device
+        self.device = config.device or "cuda"
         assert config.model_name in Llm.models, f"model {config.model_name} not found.\nchose one of: {[key for key in Llm.models.keys()]}"
         self.model_name = config.model_name
         self.model_config = self.get_model_config(config.model_name, config.bitsize)
@@ -95,7 +101,7 @@ class Llm:
 
     def load_tokenizer(self):
         model_id = self.model_config['model']
-        tokenizer_loader = AutoTokenizer.from_pretrained if "llama" not in model_id.lower() else LlamaTokenizer.from_pretrained
+        tokenizer_loader = LlamaTokenizer.from_pretrained if "llama" in model_id.lower() else AutoTokenizer.from_pretrained
         self.timeit()
         self.tokenizer = tokenizer_loader(model_id)
         self.timeit("load tokenizer")
@@ -176,7 +182,7 @@ class Llm:
                 stopping_criteria_config = self.stopping_criteria_config
             else:
                 stopping_criteria_config = {}
-            #if self.stopping_criteria_config is not None:
+            # if self.stopping_criteria_config is not None:
             #    stopping_criteria_config = self.stopping_criteria_config
             outputs = self.model.generate(**inputs, **generation_config, **stopping_criteria_config,
                                           pad_token_id=self.tokenizer.eos_token_id)
