@@ -1,6 +1,6 @@
 # Hugging Face VSCode Endpoint Server
 
-A server for [huggingface-vscode](https://github.com/huggingface/huggingface-vscode) custom endpoints using LLMs.
+A server for [huggingface-vscdoe](https://github.com/huggingface/huggingface-vscode) custom endpoints using LLMs.
 
 This fork properly handles multiple client requests, adds Bearer-token authentication and supports https.
 
@@ -10,9 +10,13 @@ Currently, we are not using batches for inference
 
 ## Usage
 
+Install [pipenv](https://pipenv.pypa.io/en/latest/installation/#preferred-installation-of-pipenv)
+Then run
+
 ```shell
-pip install -r requirements.txt
-python -m app.main
+pipenv install
+CUDA_VISIBLE_DEVICES=<devices> pipenv run python -m app.main --api-type=code --pretrained=<model> --auth-prefix=<token> --port 8004
+
 ```
 
 Use `http://localhost:8000/api/generate/` as `Hugging Face Code > Model ID or Endpoint` in VSCode.
