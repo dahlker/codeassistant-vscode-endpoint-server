@@ -39,6 +39,7 @@ class Llm:
         'mpnet-v2': {'model': 'sentence-transformers/all-mpnet-base-v2'},
         'starcoder': {'model': 'bigcode/starcoder'},
         'testing': {'model': 'gpt2'},
+        'upstage-llama2': {'model': 'upstage/Llama-2-70b-instruct-v2'},
     }
 
     generation_config_overrides = {'falcon': {'ignore': ['stop']}}
