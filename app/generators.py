@@ -1,29 +1,32 @@
 import time
 import traceback
 from typing import List
+from uuid import uuid4
 
-from Llm import Llm
-from api_models import ChatCompletionRequestPayload, ChatCompletionApiResponse, ChatCompletionApiChoice, ChatMessage, ApiUsage
-from api_models import CodingApiResponse, CodingRequestPayload, CodingParameters
-from api_models import GeneratorBase, GeneratorException
-from util import logger
+from app.Llm import Llm
+from app.model.api_models import ChatCompletionRequestPayload, ChatCompletionApiResponse, ChatCompletionApiChoice, ChatMessage, ApiUsage
+from app.model.api_models import CodingApiResponse, CodingRequestPayload, CodingParameters
+from app.model.api_models import GeneratorBase, GeneratorException
+from app.util import logger
 
 
 class ChatGenerator(GeneratorBase):
-    def __init__(self, llm: Llm):
+    def __init__(self, llm: Llm = None):
         self.llm = llm
         self.message_prefix = '### '
-        self.llm.add_stopwords([self.message_prefix.strip()])
-        self.idx = 0
+        if "vicuna" in self.llm.model_name:
+            # the LLama tokenizer splits "\n###" into "\n", "##", "#". So we check for "##"
+            self.llm.add_stopwords(['\n##'])
+        else:
+            self.llm.add_stopwords([self.message_prefix.strip()])
 
     @classmethod
-    def generate_default_api_response(self, message: str, status: int) -> ChatCompletionApiResponse:
-        response = ChatCompletionApiResponse(id=status, created=int(time.time()), model=message, choices=[],
-                                             usage=self.generate_api_usage(0, 0))
+    def generate_default_api_response(cls, message: str, status: int) -> ChatCompletionApiResponse:
+        response = ChatCompletionApiResponse(id=status, created=int(time.time()), model=message, choices=[], usage=cls.generate_api_usage(0, 0))
         return response
 
-    @classmethod
-    def generate_api_usage(self, prompt_tokens: int, completion_tokens: int) -> ApiUsage:
+    @staticmethod
+    def generate_api_usage(prompt_tokens: int, completion_tokens: int) -> ApiUsage:
         return ApiUsage(prompt_tokens=prompt_tokens, completion_tokens=completion_tokens, total_tokens=prompt_tokens + completion_tokens)
 
     def chat_messages_to_prompt(self, chat_messages: List[ChatMessage]) -> str:
@@ -32,14 +35,12 @@ class ChatGenerator(GeneratorBase):
         return "\n".join(chat_message_strings)
 
     def generate_api_response(self, answer: str, api_usage: ApiUsage) -> ChatCompletionApiResponse:
-        self.idx += 1
-        idx = f"chatcmpl-{self.idx}"
+        idx = f"chatcmpl-{uuid4()}"
         created = int(time.time())
-        model = self.llm.model_name
         chat_message = ChatMessage(role="assistant", content=answer)
         chat_completion = ChatCompletionApiChoice(index=0, message=chat_message, finish_reason="stop")
         choices = [chat_completion]
-        return ChatCompletionApiResponse(id=idx, created=created, model=model, choices=choices, usage=api_usage)
+        return ChatCompletionApiResponse(id=idx, created=created, model=self.llm.model_name, choices=choices, usage=api_usage)
 
     def get_generation_config(self, request_payload: ChatCompletionRequestPayload) -> dict:
         config_keys = {'temperature': 'temperature', 'top_p': 'top_p', 'max_tokens': 'max_new_tokens'}
@@ -63,11 +64,10 @@ class ChatGenerator(GeneratorBase):
 class CodeGenerator(GeneratorBase):
     def __init__(self, llm: Llm = None):
         self.llm = llm
-        self.idx = 0
 
     @classmethod
-    def generate_default_api_response(self, message: str, status: int) -> CodingApiResponse:
-        response = CodingApiResponse(status=status, generated_text=message)
+    def generate_default_api_response(cls, message: str, status: int) -> CodingApiResponse:
+        response = CodingApiResponse(id=f"codecmpl-{uuid4()}", status=status, generated_text=message)
         return response
 
     def get_generation_config(self, request_payload: CodingRequestPayload) -> tuple:
@@ -91,4 +91,4 @@ class CodeGenerator(GeneratorBase):
             logger.debug(f"Full stacktrace: \n{traceback.format_exc()}")
             raise GeneratorException("Internal error invoking the model. Please let us know that you are experiencing this error.")
         return self.generate_default_api_response(answer, 200)
-    
+

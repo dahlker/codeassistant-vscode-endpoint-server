@@ -6,21 +6,22 @@ from collections import deque
 from fastapi import Request
 from pydantic import BaseModel
 
-from api_models import GeneratorBase, GeneratorException
-from util import logger
+from app.model.api_models import GeneratorBase, GeneratorException, ApiResponse, RequestPayload
+from app.util import logger
 
 
 class ClientRequest:
-    def __init__(self, request: Request, request_payload: BaseModel, cnt: int):
+    def __init__(self, request: Request, request_payload: RequestPayload, cnt: int):
         self.creation_time = time.time()
         self.id: str = self.get_client_id(request)
         self.cnt: int = cnt
         self.request: Request = request
-        self.request_payload: BaseModel = request_payload
-        self.api_response: BaseModel | None = None
+        self.request_payload = request_payload
+        self.api_response: ApiResponse | None = None
         self.event: asyncio.Event = asyncio.Event()
-        
-    def get_client_id(self, request):
+
+    @staticmethod
+    def get_client_id(request):
         if 'authorization' in request._headers:
             auth_header = request._headers['authorization']
             logger.debug(f"auth_header {auth_header}")
@@ -28,16 +29,17 @@ class ClientRequest:
                 return auth_header[7:] + request.client.host
         return ""
 
+
 class ClientRequestQueue:
     def __init__(self):
         self._queue: deque = deque()
         self._client_items: dict = dict()
         self._lock: threading.Lock = threading.Lock()
         self._cache: dict = dict()
-    
-    async def put_or_exchange(self, item: ClientRequest) -> ClientRequest:
+
+    async def put_or_exchange(self, item: ClientRequest) -> ClientRequest | None:
         client_id: str = item.id
-        exchanged_item: ClientRequest = None
+        exchanged_item: ClientRequest | None = None
         with self._lock:
             if client_id in self._client_items:
                 exchanged_item = self._client_items[client_id]
@@ -55,22 +57,25 @@ class ClientRequestQueue:
                     return item
             await asyncio.sleep(.01)
 
+
 class ResponseCache:
     def __init__(self):
-        self._cache: dict = dict()
+        self._cache: dict[tuple, ApiResponse] = dict()
         self._lock: threading.Lock = threading.Lock()
 
-    async def update(self, request_payload: BaseModel, api_response: BaseModel):
+    async def update(self, request_payload: RequestPayload, api_response: ApiResponse):
         with self._lock:
             self._cache[request_payload.key()] = api_response
 
-    async def retrieve(self, request_payload: BaseModel) -> BaseModel:
+    async def retrieve(self, request_payload: RequestPayload) -> ApiResponse | None:
         with self._lock:
             if request_payload.key() in self._cache:
-                api_response: BaseModel = self._cache[request_payload.key()]
+                api_response = self._cache[request_payload.key()]
+                api_response.set_is_cached_response()
                 return api_response
         return None
-    
+
+
 class RequestHandler:
     def __init__(self, generator: GeneratorBase, auth_prefix: str):
         self.generator: GeneratorBase = generator
@@ -84,9 +89,9 @@ class RequestHandler:
             logger.debug("awaiting next request")
             client_request: ClientRequest = await self.queue.get()
             request: Request = client_request.request
-            request_payload: BaseModel = client_request.request_payload
+            request_payload = client_request.request_payload
             logger.debug(f"got request {client_request.cnt} from queue {request.client.port}")
-            api_response: BaseModel = await self.response_cache.retrieve(request_payload)
+            api_response: ApiResponse = await self.response_cache.retrieve(request_payload)
             try:
                 if api_response is None:
                     await asyncio.sleep(0.005)
@@ -100,22 +105,18 @@ class RequestHandler:
             logger.debug(f"done processing request {client_request.cnt} from queue {request.client.port}")
             client_request.api_response = api_response
             client_request.event.set()
-    
-    async def handle_request(self, request: Request, request_payload: BaseModel) -> BaseModel:
+
+    async def handle_request(self, request: Request, request_payload: RequestPayload) -> BaseModel:
         self.cnt += 1
         local_cnt = self.cnt
         logger.info(f" received request {local_cnt} from {request.client.host}:{request.client.port}")
         client_request: ClientRequest = ClientRequest(request, request_payload, local_cnt)
 
-        if not client_request.id.startswith(self.auth_prefix):
-            logger.debug(f"request {local_cnt} with invalid bearer token: '{client_request.id}'")
-            # we don't throw an exception here, so that the user will see the error message within the IDE
-            return self.generator.generate_default_api_response("invalid bearer token", 401)
-
         cached_response = await self.response_cache.retrieve(request_payload)
         if cached_response is not None:
             logger.debug(f"cache hit for request {local_cnt}")
-            logger.info(f" returning request {local_cnt} from port {request.client.port}: time {time.time() - client_request.creation_time:.5f}")
+            logger.info(
+                f" returning request {local_cnt} from port {request.client.port}: time {time.time() - client_request.creation_time:.5f}")
             return cached_response
 
         exchanged_client_request = await self.queue.put_or_exchange(client_request)
@@ -123,9 +124,18 @@ class RequestHandler:
             logger.info(f" expired request {exchanged_client_request.cnt}")
             exchanged_client_request.api_response = self.generator.generate_default_api_response("", 429)
             exchanged_client_request.event.set()
-    
+
         logger.debug(f"waiting for request {local_cnt}")
         await client_request.event.wait()
 
-        logger.info(f" returning request {local_cnt} from port {request.client.port}: time {time.time() - client_request.creation_time:.5f}")
+        logger.info(
+            f" returning request {local_cnt} from port {request.client.port}: time {time.time() - client_request.creation_time:.5f}")
         return client_request.api_response
+
+
+class RequestHandlerProvider:
+    def __init__(self, request_handler: RequestHandler):
+        self.request_handler = request_handler
+
+    def get_handler(self) -> RequestHandler:
+        return self.request_handler
