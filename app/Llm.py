@@ -40,6 +40,12 @@ class Llm:
         'starcoder': {'model': 'bigcode/starcoder'},
         'testing': {'model': 'gpt2'},
         'upstage-llama2': {'model': 'upstage/Llama-2-70b-instruct-v2'},
+        'openorcaxopenchat': {'model': 'Open-Orca/OpenOrcaxOpenChat-Preview2-13B'},
+        'vicuna-13b-v1.5-16k': {'model': 'lmsys/vicuna-13b-v1.5-16k'},
+        'vicuna-13b-v1.5': {'model': 'lmsys/vicuna-13b-v1.5'},
+        'openchat-v3.2': {'model': 'openchat/openchat_v3.2'},
+        'llama2-32k': {'model': 'togethercomputer/LLaMA-2-7B-32K'},
+        'wizardlm-code': {'model': 'WizardLM/WizardLM-13B-V1.2'},
     }
 
     generation_config_overrides = {'falcon': {'ignore': ['stop']}}

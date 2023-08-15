@@ -28,7 +28,7 @@ class RequestPayload(BaseModel):
 
 class CodingRequestPayload(RequestPayload):
     inputs: str
-    parameters: Optional[CodingParameters]
+    parameters: Optional[CodingParameters] = None
 
     def key(self):
         return self.inputs, self.parameters.key() if self.parameters else ""
@@ -78,7 +78,7 @@ class TextCompletionRequestPayload(CompletionRequestPayload):
 class ChatMessage(BaseModel):
     role: str
     content: str
-    name: Optional[str]
+    name: Optional[str] = None
 
 
 class ChatCompletionRequestPayload(CompletionRequestPayload):

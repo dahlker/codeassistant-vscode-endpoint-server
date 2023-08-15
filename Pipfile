@@ -9,10 +9,10 @@ verify_ssl = true
 name = "downloadpytorch"
 
 [packages]
-uvicorn = "~=0.22.0"
-fastapi = "~=0.95.1"
-transformers = "~=4.30.0"
-accelerate = "~=0.20.3"
+uvicorn = "*"
+fastapi = "*"
+transformers = "*"
+accelerate = "*"
 bitsandbytes = "*"
 einops = "*"
 scipy = "*"
