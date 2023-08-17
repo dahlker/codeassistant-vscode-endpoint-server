@@ -3,8 +3,9 @@ import traceback
 from typing import List
 from uuid import uuid4
 
+from loguru import logger
+
 from app.Llm import Llm
-from app.logger import logger
 from app.model.api_models import ChatCompletionRequestPayload, ChatCompletionApiResponse, ChatCompletionApiChoice, ChatMessage, ApiUsage
 from app.model.api_models import CodingApiResponse, CodingRequestPayload, CodingParameters
 from app.model.api_models import GeneratorBase, GeneratorException
@@ -91,4 +92,3 @@ class CodeGenerator(GeneratorBase):
             logger.debug(f"Full stacktrace: \n{traceback.format_exc()}")
             raise GeneratorException("Internal error invoking the model. Please let us know that you are experiencing this error.")
         return self.generate_default_api_response(answer, 200)
-

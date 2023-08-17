@@ -6,7 +6,7 @@ from collections import deque
 from fastapi import Request
 from pydantic import BaseModel
 
-from app.logger import logger
+from loguru import logger
 from app.model.api_models import GeneratorBase, GeneratorException, ApiResponse, RequestPayload
 
 

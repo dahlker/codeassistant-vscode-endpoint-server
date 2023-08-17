@@ -3,10 +3,11 @@ from pathlib import Path
 import uvicorn
 from fastapi import FastAPI, APIRouter, HTTPException, Depends, Security
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from loguru import logger
 
 from app.Llm import Llm
 from app.generators import CodeGenerator, ChatGenerator
-from app.logger import logger
+from app.logger import configure_logger
 from app.request_handler import RequestHandler
 from app.request_handler import RequestHandlerProvider
 from app.routers.completion import get_completion_router
@@ -61,6 +62,7 @@ def add_feedback_endpoint(router):
 
 def main():
     api_config, model_config, server_config = get_config_from_arguments()
+    configure_logger(api_config, model_config)
     app = build_app(api_config, model_config)
     uvicorn.run(app, **server_config.model_dump())
 

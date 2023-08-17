@@ -1,9 +1,8 @@
 from collections import defaultdict
 
 from fastapi import APIRouter
+from loguru import logger
 from pydantic import BaseModel
-
-from app.logger import logger
 
 
 class Feedback(BaseModel):
