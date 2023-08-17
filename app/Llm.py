@@ -45,7 +45,8 @@ class Llm:
         'vicuna-13b-v1.5': {'model': 'lmsys/vicuna-13b-v1.5'},
         'openchat-v3.2': {'model': 'openchat/openchat_v3.2'},
         'llama2-32k': {'model': 'togethercomputer/LLaMA-2-7B-32K'},
-        'wizardlm-code': {'model': 'WizardLM/WizardLM-13B-V1.2'},
+        'wizardlm-wizardlm': {'model': 'WizardLM/WizardLM-13B-V1.2'},
+        'wizardlm-wizardcoder': {'model': 'WizardLM/WizardCoder-15B-V1.0'},
     }
 
     generation_config_overrides = {'falcon': {'ignore': ['stop']}}

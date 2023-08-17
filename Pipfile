@@ -18,6 +18,7 @@ einops = "*"
 scipy = "*"
 sentencepiece = "*"
 torch = {version = "*", index = "downloadpytorch"}
+protobuf = "*"
 
 [dev-packages]
 
