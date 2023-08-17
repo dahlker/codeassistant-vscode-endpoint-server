@@ -3,7 +3,7 @@ from collections import defaultdict
 from fastapi import APIRouter
 from pydantic import BaseModel
 
-from app.util import logger
+from app.logger import logger
 
 
 class Feedback(BaseModel):

@@ -6,11 +6,12 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.Llm import Llm
 from app.generators import CodeGenerator, ChatGenerator
+from app.logger import logger
 from app.request_handler import RequestHandler
 from app.request_handler import RequestHandlerProvider
 from app.routers.completion import get_completion_router
 from app.routers.feedback import get_feedback_router
-from app.util import logger, get_config_from_arguments, ApiConfig, ModelConfig
+from app.util import get_config_from_arguments, ApiConfig, ModelConfig
 
 
 def read_version():
@@ -61,7 +62,7 @@ def add_feedback_endpoint(router):
 def main():
     api_config, model_config, server_config = get_config_from_arguments()
     app = build_app(api_config, model_config)
-    uvicorn.run(app, **server_config.dict())
+    uvicorn.run(app, **server_config.model_dump())
 
 
 if __name__ == '__main__':

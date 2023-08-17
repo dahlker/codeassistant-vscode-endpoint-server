@@ -4,10 +4,10 @@ from typing import List
 from uuid import uuid4
 
 from app.Llm import Llm
+from app.logger import logger
 from app.model.api_models import ChatCompletionRequestPayload, ChatCompletionApiResponse, ChatCompletionApiChoice, ChatMessage, ApiUsage
 from app.model.api_models import CodingApiResponse, CodingRequestPayload, CodingParameters
 from app.model.api_models import GeneratorBase, GeneratorException
-from app.util import logger
 
 
 class ChatGenerator(GeneratorBase):
@@ -74,7 +74,7 @@ class CodeGenerator(GeneratorBase):
         coding_parameters = CodingParameters() if request_payload.parameters is None else request_payload.parameters
         parameters = {}
         stopping_criteria_list = None
-        for param, value in coding_parameters.dict().items():
+        for param, value in coding_parameters.model_dump().items():
             if param == 'stop' and value is not None and len(value) > 0:
                 stopping_criteria_list = self.llm.get_stopping_criteria_list(value)
             else:

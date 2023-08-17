@@ -1,20 +1,8 @@
 import argparse
-import logging
 
 from pydantic import BaseModel, Field
 
 from app.model.api_models import CompletionType
-
-logging.basicConfig(
-    format="%(asctime)s %(levelname)s %(message)s",
-    level=logging.DEBUG,
-    handlers=[
-        logging.FileHandler('app.log'),
-        logging.StreamHandler()
-    ]
-)
-
-logger = logging.getLogger('app')
 
 
 def get_parser() -> argparse.ArgumentParser:
@@ -44,13 +32,13 @@ class ServerConfig(BaseModel):
         if args.ssl_certificate and args.ssl_keyfile:
             ssl_certificate = args.ssl_certificate
             ssl_key = args.ssl_keyfile
-        return cls.parse_obj(vars(args) | {"ssl_keyfile": ssl_key, "ssl_certfile": ssl_certificate})
+        return cls.model_validate(vars(args) | {"ssl_keyfile": ssl_key, "ssl_certfile": ssl_certificate})
 
 
 class ConfigModel(BaseModel):
     @classmethod
     def from_args(cls, args: argparse.Namespace):
-        return cls.parse_obj(vars(args))
+        return cls.model_validate(vars(args))
 
 
 class ApiConfig(ConfigModel):
