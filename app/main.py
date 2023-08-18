@@ -2,6 +2,7 @@ from pathlib import Path
 
 import uvicorn
 from fastapi import FastAPI, APIRouter, HTTPException, Depends, Security
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from loguru import logger
 
@@ -46,6 +47,12 @@ def build_app(api_config: ApiConfig, model_config: ModelConfig) -> FastAPI:
         version=read_version(),
         dependencies=[Depends(verify_token)]
     )
+
+    app.add_middleware(CORSMiddleware,
+            allow_origins=["*"],
+            allow_credentials=True,
+            allow_methods=["*"],
+            allow_headers=["*"])
 
     router = APIRouter()
     add_completion_endpoints(model_config, router)
