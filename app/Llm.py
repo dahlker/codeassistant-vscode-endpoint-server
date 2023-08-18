@@ -2,10 +2,10 @@ from collections import defaultdict
 from timeit import default_timer as timer
 
 import torch
+from loguru import logger
 from transformers import AutoModelForCausalLM, LlamaForCausalLM, AutoTokenizer, LlamaTokenizer
 from transformers import StoppingCriteria, StoppingCriteriaList
 
-from loguru import logger
 from app.util import ModelConfig
 
 

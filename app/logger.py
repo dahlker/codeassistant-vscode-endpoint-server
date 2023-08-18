@@ -4,7 +4,7 @@ import sys
 from app.util import ModelConfig, ApiConfig
 
 
-def configure_logger(api_config: ApiConfig, model_config: ModelConfig):
+def configure_logger(model_config: ModelConfig):
     from loguru import logger
 
     class InterceptHandler(logging.Handler):
@@ -27,4 +27,4 @@ def configure_logger(api_config: ApiConfig, model_config: ModelConfig):
 
     logging.basicConfig(handlers=[InterceptHandler()], level=0, force=True)
 
-    logger.add(f"{api_config.api_type}_{model_config.model_name}" + "_{time}.log", format=logger_format, rotation="50MB", level="DEBUG")
+    logger.add(model_config.model_name + "_{time}.log", format=logger_format, rotation="50MB", level="DEBUG")

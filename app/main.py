@@ -64,7 +64,7 @@ def build_app(api_config: ApiConfig, model_config: ModelConfig) -> FastAPI:
 
 def main():
     api_config, model_config, server_config = get_config_from_arguments()
-    configure_logger(api_config, model_config)
+    configure_logger(model_config)
     app = build_app(api_config, model_config)
     uvicorn.run(app, **server_config.model_dump())
 
