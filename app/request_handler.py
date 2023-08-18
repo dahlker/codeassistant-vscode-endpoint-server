@@ -77,11 +77,10 @@ class ResponseCache:
 
 
 class RequestHandler:
-    def __init__(self, generator: GeneratorBase, auth_prefix: str):
+    def __init__(self, generator: GeneratorBase):
         self.generator: GeneratorBase = generator
         self.queue: ClientRequestQueue = ClientRequestQueue()
         self.response_cache: ResponseCache = ResponseCache()
-        self.auth_prefix = auth_prefix
         self.cnt = 0
 
     async def process_request_queue(self):
