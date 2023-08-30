@@ -15,7 +15,7 @@ Then run
 
 ```shell
 pipenv install
-CUDA_VISIBLE_DEVICES=<devices> pipenv run python -m app.main --api-type=code --pretrained=<model> --auth-prefix=<token> --port 8004
+CUDA_VISIBLE_DEVICES=<devices> pipenv run python -m app.main --pretrained=<model> --auth-prefix=<token> --port 8004
 
 ```
 
